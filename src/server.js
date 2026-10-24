@@ -169,6 +169,55 @@ app.post('/new', (req, res) => {
   res.redirect(`/post/${slug}`);
 });
 
+app.post("/new", (req, res) => {
+  const { title, content, date } = req.body;
+  if (!title || !content) return res.status(400).send("Missing fields");
+  const slug =
+    slugify(title, { lower: true, strict: true }) || `post-${Date.now()}`;
+  const filePath = path.join(POSTS_DIR, `${slug}.md`);
+  if (fs.existsSync(filePath)) {
+    return res
+      .status(409)
+      .send(
+        renderLayout(
+          "Conflict",
+          `<p>Slug already exists. Try a different title.</p><p><a href='/new'>Back</a></p>`,
+        ),
+      );
+  }
+  const frontMatter = matter.stringify(content, {
+    title,
+    date: date || new Date().toISOString().slice(0, 10),
+  });
+  fs.writeFileSync(filePath, frontMatter, "utf-8");
+  res.redirect(`/post/${slug}`);
+});
+
+// === CHALLENGE OBJECTIVE 2: ADD FAQs ROUTE HANDLER ===
+app.get("/faqs", (req, res) => {
+  const body = `
+    <article class='fade-in'>
+      <h2>Frequently Asked Questions</h2>
+      <div style="margin-top:1.5rem">
+        <h3>Q: Is this code updates live?</h3>
+        <p>A: Yes! Because of Docker Bind Mounts, changing code on Windows instantly updates the container.</p>
+      </div>
+      <div style="margin-top:1.5rem">
+        <h3>Q: Where are files saved?</h3>
+        <p>A: Directly inside your project's local directory on your laptop hard drive.</p>
+      </div>
+      <div class='actions' style='margin-top:2rem'>
+        <a href='/'>&larr; Back Home</a>
+      </div>
+    </article>`;
+  res.send(renderLayout("FAQs", body));
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Posty listening on http://localhost:${PORT}`);
+});
+
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Posty listening on http://localhost:${PORT}`);
 });
