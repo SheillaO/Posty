@@ -1,36 +1,37 @@
-import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import { marked } from 'marked';
-import sanitizeHtml from 'sanitize-html';
-import slugify from 'slugify';
-import { fileURLToPath } from 'url';
+import express from "express";
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+import slugify from "slugify";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
-const POSTS_DIR = path.join(__dirname, '..', 'posts');
+const POSTS_DIR = path.join(__dirname, "..", "posts");
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 function loadPost(slug) {
   const filePath = path.join(POSTS_DIR, `${slug}.md`);
   if (!fs.existsSync(filePath)) return null;
-  const raw = fs.readFileSync(filePath, 'utf-8');
+  const raw = fs.readFileSync(filePath, "utf-8");
   const { data, content } = matter(raw);
   return { slug, ...data, content };
 }
 
 function listPosts() {
   if (!fs.existsSync(POSTS_DIR)) return [];
-  return fs.readdirSync(POSTS_DIR)
-    .filter(f => f.endsWith('.md'))
-    .map(f => {
-      const slug = f.replace(/\.md$/, '');
+  return fs
+    .readdirSync(POSTS_DIR)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => {
+      const slug = f.replace(/\.md$/, "");
       return loadPost(slug);
     })
     .filter(Boolean)
@@ -43,7 +44,7 @@ function listPosts() {
 // in negative timezones (e.g., America/New_York) producing an off-by-one result.
 // To avoid this, we manually parse bare date strings and do NOT create a Date.
 function formatDate(value) {
-  if (!value) return '';
+  if (!value) return "";
   const str = String(value).trim();
   // Match optional quotes around an ISO-like date-only string
   const m = str.match(/^'?([0-9]{4})-([0-9]{2})-([0-9]{2})'?$/);
@@ -54,8 +55,8 @@ function formatDate(value) {
   // Fallback: try Date parsing for other formats (includes time).
   const d = new Date(str);
   if (!isNaN(d)) {
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${mm}-${dd}-${yyyy}`;
   }
@@ -82,6 +83,7 @@ function renderLayout(title, body) {
         <ul class='nav-links'>
           <li><a href='/'>Home</a></li>
           <li><a href='/new'>New</a></li>
+           <li><a href='/faqs'>FAQs</a></li>
           <li><a href='https://github.com' target='_blank' rel='noopener'>Repo</a></li>
         </ul>
       </nav>
@@ -93,14 +95,18 @@ function renderLayout(title, body) {
   </html>`;
 }
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   const posts = listPosts();
-  const cards = posts.map(p => `
+  const cards = posts
+    .map(
+      (p) => `
     <div class='card fade-in'>
       <h3><a href='/post/${p.slug}'>${p.title || p.slug}</a></h3>
-      ${p.date ? `<small>${formatDate(p.date)}</small>` : ''}
+      ${p.date ? `<small>${formatDate(p.date)}</small>` : ""}
       <a class='stretched' href='/post/${p.slug}' aria-label='Read ${p.title || p.slug}'></a>
-    </div>`).join('\n');
+    </div>`,
+    )
+    .join("\n");
   const body = `
     <section class='hero'>
       <h1>Posty</h1>
@@ -113,18 +119,28 @@ app.get('/', (req, res) => {
       <h2>Latest Posts</h2>
       <div class='grid'>${cards || `<p class='empty'>No posts yet. Be the first!</p>`}</div>
     </section>`;
-  res.send(renderLayout('Home', body));
+  res.send(renderLayout("Home", body));
 });
 
-app.get('/post/:slug', (req, res) => {
+app.get("/post/:slug", (req, res) => {
   const post = loadPost(req.params.slug);
-  if (!post) return res.status(404).send(renderLayout('Not found', `<article><h2>Post not found</h2><p><a href='/'>&larr; Back home</a></p></article>`));
-  const html = marked.parse(post.content || '');
-  const safe = sanitizeHtml(html, { allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']) });
+  if (!post)
+    return res
+      .status(404)
+      .send(
+        renderLayout(
+          "Not found",
+          `<article><h2>Post not found</h2><p><a href='/'>&larr; Back home</a></p></article>`,
+        ),
+      );
+  const html = marked.parse(post.content || "");
+  const safe = sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+  });
   const body = `
     <article class='fade-in'>
       <h2>${post.title || post.slug}</h2>
-      ${post.date ? `<p><small>${formatDate(post.date)}</small></p>` : ''}
+      ${post.date ? `<p><small>${formatDate(post.date)}</small></p>` : ""}
       <div class='post-body'>${safe}</div>
       <div class='actions' style='margin-top:2rem'>
         <a href='/'>&larr; Back</a>
@@ -133,7 +149,7 @@ app.get('/post/:slug', (req, res) => {
   res.send(renderLayout(post.title || post.slug, body));
 });
 
-app.get('/new', (req, res) => {
+app.get("/new", (req, res) => {
   const body = `
     <article class='fade-in'>
       <h2>Create New Post</h2>
@@ -142,7 +158,7 @@ app.get('/new', (req, res) => {
           <input name='title' required placeholder='An Awesome Idea'>
         </label>
         <label>Date
-          <input type='date' name='date' value='${new Date().toISOString().slice(0,10)}'>
+          <input type='date' name='date' value='${new Date().toISOString().slice(0, 10)}'>
         </label>
         <label>Content (Markdown)
           <textarea name='content' required placeholder='# Heading\n\nShare something interesting...'># Hello World\n\nWrite something awesome.</textarea>
@@ -153,19 +169,30 @@ app.get('/new', (req, res) => {
         </div>
       </form>
     </article>`;
-  res.send(renderLayout('New Post', body));
+  res.send(renderLayout("New Post", body));
 });
 
-app.post('/new', (req, res) => {
+app.post("/new", (req, res) => {
   const { title, content, date } = req.body;
-  if (!title || !content) return res.status(400).send('Missing fields');
-  const slug = slugify(title, { lower: true, strict: true }) || `post-${Date.now()}`;
+  if (!title || !content) return res.status(400).send("Missing fields");
+  const slug =
+    slugify(title, { lower: true, strict: true }) || `post-${Date.now()}`;
   const filePath = path.join(POSTS_DIR, `${slug}.md`);
   if (fs.existsSync(filePath)) {
-    return res.status(409).send(renderLayout('Conflict', `<p>Slug already exists. Try a different title.</p><p><a href='/new'>Back</a></p>`));
+    return res
+      .status(409)
+      .send(
+        renderLayout(
+          "Conflict",
+          `<p>Slug already exists. Try a different title.</p><p><a href='/new'>Back</a></p>`,
+        ),
+      );
   }
-  const frontMatter = matter.stringify(content, { title, date: date || new Date().toISOString().slice(0,10) });
-  fs.writeFileSync(filePath, frontMatter, 'utf-8');
+  const frontMatter = matter.stringify(content, {
+    title,
+    date: date || new Date().toISOString().slice(0, 10),
+  });
+  fs.writeFileSync(filePath, frontMatter, "utf-8");
   res.redirect(`/post/${slug}`);
 });
 
@@ -217,7 +244,6 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`Posty listening on http://localhost:${PORT}`);
 });
 
-
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Posty listening on http://localhost:${PORT}`);
 });
